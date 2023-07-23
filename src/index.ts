@@ -25,13 +25,13 @@ async function readLogs(): Promise<string[]> {
 }
 
 async function getFormattedLogData(filesData: string[]): Promise<formattedLogData[]> {
-    var lineWiseData: string[] = [];
+    let lineWiseData: string[] = [];
     // add line wise data from log files into array
     for(let i=0; i<filesData.length; i++){
         lineWiseData = [...lineWiseData, ...filesData[i].split("\n")];
     }
     // read each line from aggregated log data and fetch timestamp, endpoint, status into formattedLogEntries
-    var formattedLogEntries: formattedLogData[] = [];
+    const formattedLogEntries: formattedLogData[] = [];
     for(let i =0; i<lineWiseData.length; i++) {
         if(lineWiseData[i].includes('HTTP')) {
             let logLineArray: string[] = [];
@@ -51,10 +51,10 @@ async function getFormattedLogData(filesData: string[]): Promise<formattedLogDat
 async function getTimeStampCountByMinutes(formattedLogEntries: formattedLogData[]) :Promise<Map<string, number>> {
   const timeCount: Map<string, number> = new Map();
   for(let i=0;i<formattedLogEntries.length; i++){
-      var timeValue = formattedLogEntries[i].timestamp;
+      const timeValue = formattedLogEntries[i].timestamp;
       // removing seconds from timestamp will allow us to aggregate endpoint count by minutes 
       // 08/Jun/2023:05:48:10, here it is in format dd/m/yyyy:hh:mm:ss
-      var timeInMinutes = timeValue.substring(0, timeValue.length-3);
+      let timeInMinutes = timeValue.substring(0, timeValue.length-3);
       timeCount.set(timeInMinutes, ((timeCount.get(timeInMinutes) || 0) +1)) ;
   }
   return timeCount;
@@ -63,7 +63,7 @@ async function getTimeStampCountByMinutes(formattedLogEntries: formattedLogData[
 async function getEndPointCount(formattedLogEntries: formattedLogData[]) :Promise<Map<string, number>> {
   const endPointCount: Map<string, number> = new Map();
   for(let i=0;i<formattedLogEntries.length; i++) {
-      var endPointValue = formattedLogEntries[i].endPoint;
+      const endPointValue = formattedLogEntries[i].endPoint;
       endPointCount.set(endPointValue, ((endPointCount.get(endPointValue) || 0) +1)) ;
   }
   return endPointCount;
@@ -72,7 +72,7 @@ async function getEndPointCount(formattedLogEntries: formattedLogData[]) :Promis
 async function getStatusCodeCount(formattedLogEntries: formattedLogData[]) :Promise<Map<string, number>> {
   const statusCodeCount: Map<string, number> = new Map();
   for(let i=0;i<formattedLogEntries.length; i++) {
-      var statusCode = formattedLogEntries[i].statusCode;
+      let statusCode = formattedLogEntries[i].statusCode;
       statusCodeCount.set(statusCode, ((statusCodeCount.get(statusCode) || 0) +1)) ;
   }
   return statusCodeCount;
