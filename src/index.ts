@@ -1,3 +1,4 @@
+import { promises } from 'dns';
 import fs from 'fs';
 
 async function readLogs(): Promise<string[]> {
@@ -18,49 +19,78 @@ async function readLogs(): Promise<string[]> {
   return dataArray;
 }
 
+async function getFormattedLogData(filesData: string[]): Promise<string[][]> {
+    var lineWiseData: string[] = [];
+    // add line wise data from log files into array
+    for(let i=0; i<filesData.length; i++){
+        lineWiseData = [...lineWiseData, ...filesData[i].split("\n")];
+    }
+    // read each line from aggregated log data and fetch timestamp, endpoint, status into formattedLogEntries
+    var formattedLogEntries: string[][] = [];
+    for(let i =0; i<lineWiseData.length; i++) {
+        if(lineWiseData[i].includes('HTTP')) {
+            let logLineArray: string[] = [];
+            logLineArray = lineWiseData[i].split(" ");
+            //example row with API call data
+            // 2023-06-08 15:48 +10:00: ::ffff:172.105.184.153 - - [08/Jun/2023:05:48:10 +0000] "GET /start.html HTTP/1.1" 404 149 "-" "curl/7.54.0"
+            // here the 6 the element spliited on space " " respresents timestamp, 8, 9 represent endpoint and 11th represents ststus code
+            const timestamp = logLineArray[6].substring(1,);
+            const endpoint = logLineArray[8] + " " + logLineArray[9];
+            const statusCode = logLineArray[11];
+            formattedLogEntries.push([timestamp, endpoint, statusCode]);
+        }
+    }
+    return formattedLogEntries
+}
+
+async function getTimeStampCountByMinutes(formattedLogEntries: string[][]) :Promise<Map<string, number>> {
+  const timeCount: Map<string, number> = new Map();
+  for(let i=0;i<formattedLogEntries.length; i++){
+      var timeValue = formattedLogEntries[i][0];
+      // removing seconds from timestamp will allow us to aggregate endpoint count by minutes 
+      // 08/Jun/2023:05:48:10, here it is in format dd/m/yyyy:hh:mm:ss
+      var timeInMinutes = timeValue.substring(0, timeValue.length-3);
+      timeCount.set(timeInMinutes, ((timeCount.get(timeInMinutes) || 0) +1)) ;
+  }
+  return timeCount;
+}
+
+async function getEndPointCount(formattedLogEntries: string[][]) :Promise<Map<string, number>> {
+  const endPointCount: Map<string, number> = new Map();
+  for(let i=0;i<formattedLogEntries.length; i++) {
+      var endPointValue = formattedLogEntries[i][1];
+      endPointCount.set(endPointValue, ((endPointCount.get(endPointValue) || 0) +1)) ;
+  }
+  return endPointCount;
+}
+
+async function getStatusCodeCount(formattedLogEntries: string[][]) :Promise<Map<string, number>> {
+  const statusCodeCount: Map<string, number> = new Map();
+  for(let i=0;i<formattedLogEntries.length; i++) {
+      var statusCode = formattedLogEntries[i][2];
+      statusCodeCount.set(statusCode, ((statusCodeCount.get(statusCode) || 0) +1)) ;
+  }
+  return statusCodeCount;
+}
+
 async function main() {
   try {
     const dataArray = await readLogs();
-    // Do whatever you want with the dataArray here
-    var splitArray: string[] = [];
-    for(let i=0; i<dataArray.length; i++){
-        splitArray = [...splitArray, ...dataArray[i].split("\n")];
-    }
-    var twoDimensionalArray: string[][] = [];
-    for(let i =0; i<splitArray.length; i++){
-        if(splitArray[i].includes('HTTP')) {
-            var spaceArray: string[] = [];
-            spaceArray = splitArray[i].split(" ");
-            if(spaceArray.length >= 11){
-            twoDimensionalArray.push([spaceArray[6].substring(1,), spaceArray[8] + " " + spaceArray[9], spaceArray[11]]);
-            }
-        }
-    }
-    var timeCount: Map<string, number> = new Map();
-    for(let i=0;i<twoDimensionalArray.length; i++){
-        var value = twoDimensionalArray[i][0];
-        var minute = value.substring(0,value.length-3);
-        timeCount.set(minute, ((timeCount.get(minute) || 0) +1)) ;
-    }
-    // console.log(timeCount);
-    // console.table(Array.from(timeCount.entries()));
+    // put data from files into formatted log type
+    const formattedLogEntries = await getFormattedLogData(dataArray);
+    // count timestamp aggregates, endpoint and statuscodes
+    const timeCount = await getTimeStampCountByMinutes(formattedLogEntries);
+    const endPointCount = await getEndPointCount(formattedLogEntries);
+    const statusCount = await getStatusCodeCount(formattedLogEntries);
+    
+    console.log("TimeStamp by minute count");
+    console.table(Array.from(timeCount.entries()));
 
-    var endptcount: Map<string, number> = new Map();
-    for(let i=0;i<twoDimensionalArray.length; i++){
-        var value = twoDimensionalArray[i][1];
-        endptcount.set(value, ((endptcount.get(value) || 0) +1)) ;
-    }
-    // console.log(statusCount);
-    // console.table(Array.from(timeCount.entries()))
+    console.log("End Point count");
+    console.table(Array.from(endPointCount.entries()));  
 
-    var statusCount: Map<string, number> = new Map();
-    for(let i=0;i<twoDimensionalArray.length; i++){
-        var value = twoDimensionalArray[i][2];
-        statusCount.set(value, ((statusCount.get(value) || 0) +1)) ;
-    }
-    // console.log(statusCount);
-    console.table(Array.from(statusCount.entries()))
-
+    console.log("Status Code Count");
+    console.table(Array.from(statusCount.entries()));
   } catch (error) {
     console.error(`Error: ${(error as Error).message}`);
   }
